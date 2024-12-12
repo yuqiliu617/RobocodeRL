@@ -2,10 +2,12 @@ package org.yuqi.robot
 
 import org.yuqi.rl.Environment
 import org.yuqi.rl.algorithm.SARSA
+import org.yuqi.rl.algorithm.lambdaGreedy
 import org.yuqi.robot.bridge.*
 import org.yuqi.util.*
 import robocode.*
 import java.awt.Color
+import java.io.File
 import java.nio.file.Paths
 import kotlin.math.max
 import kotlin.math.min
@@ -24,13 +26,13 @@ class RLBot : AdvancedRobot() {
         fun radianTransform(rawRadian: Double) = normalizeRadian(Math.PI / 2 - rawRadian, true)
 
         val env = Environment<State, Action>()
-        val dataFile = Paths.get("robots/rl.bin").toFile()
-        val table = ArrayTable(State.maxIndex, Action.maxIndex, dataFile, true).apply {
+        val dataFile: File = Paths.get("robots/rl.bin").toFile()
+        val table = LocalQTable(dataFile).apply {
             if (file.exists())
                 runCatching { load() }
         }
-        val lambda: Float = 0.1F
-        val rl = SARSA(env, table, 0.2, 0.9, Action::fromIndex, lambda).apply { start() }
+        const val LAMBDA: Float = 0.1F
+        val rl = SARSA(env, table, 0.2, 0.9, lambdaGreedy(LAMBDA)).apply { start() }
     }
 
     private var track: TrackStatus = TrackStatus.Init
@@ -108,7 +110,7 @@ class RLBot : AdvancedRobot() {
     override fun onBattleEnded(event: BattleEndedEvent) {
         rl.stop()
         table.save()
-        val fileName = "${rl::class.java.typeName.let { it.substring(it.lastIndexOf(".") + 1) }}-${rl.learningRate}-${rl.decayFactor}-${lambda}"
+        val fileName = "${rl::class.java.typeName.let { it.substring(it.lastIndexOf(".") + 1) }}-${rl.learningRate}-${rl.decayFactor}-${LAMBDA}"
         Paths.get("../RobocodeRL/plot/$fileName.txt").toFile()
             .writeText("$numRounds,${winRecords.joinToString(",")}")
     }

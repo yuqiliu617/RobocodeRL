@@ -3,14 +3,13 @@ package org.yuqi.rl.algorithm
 import org.yuqi.rl.Environment
 import org.yuqi.rl.IIndexable
 import org.yuqi.rl.IState
-import org.yuqi.util.ITable
+import org.yuqi.util.IQTable
 
 abstract class LUT<TState : IState, TAction : IIndexable>(
     val env: Environment<TState, TAction>,
-    val table: ITable<Float>,
+    val table: IQTable<TState, TAction>,
     var learningRate: Double,
     var decayFactor: Double,
-    val indexToAction: (index: Int) -> TAction,
     val policy: Policy<Float>
 ) {
     protected var epoch: Int = -1
