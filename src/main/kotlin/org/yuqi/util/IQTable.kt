@@ -12,3 +12,7 @@ interface IQTable<TState, TAction> {
         = actions.map { it to get(state, it) }
 }
 
+interface IPersistentQTable<TState, TAction> : IQTable<TState, TAction> {
+    fun load()
+    fun save()
+}

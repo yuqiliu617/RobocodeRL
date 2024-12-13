@@ -3,13 +3,13 @@ package org.yuqi.robot.bridge
 import org.yuqi.nn.NeuralNetwork
 import org.yuqi.nn.math.ActivationFunctions
 import org.yuqi.nn.math.IActivationFunctionPair
-import org.yuqi.util.IQTable
+import org.yuqi.util.IPersistentQTable
 import org.yuqi.util.discard
 import org.yuqi.util.normalizeRadian
 import java.io.File
 import kotlin.math.min
 
-class DqnInterface(val nn: NeuralNetwork) : IQTable<State, Action> {
+class DqnInterface(nn: NeuralNetwork, val file: File) : IPersistentQTable<State, Action> {
     companion object {
         fun toInputs(state: State, action: Action): FloatArray {
             val inputs = Array(15) { 0.0 }
@@ -38,12 +38,20 @@ class DqnInterface(val nn: NeuralNetwork) : IQTable<State, Action> {
         }
     }
 
-    constructor(file: File, compressed: Boolean = true) : this(NeuralNetwork.load(file, compressed))
-    constructor(hiddenLayerConfigs: Iterable<Pair<Int, IActivationFunctionPair>>) :
-        this(NeuralNetwork(15, 1, hiddenLayerConfigs.map { it.first }, hiddenLayerConfigs.map { it.second } + ActivationFunctions.LINEAR))
+    var nn: NeuralNetwork = nn
+        private set
+
+    constructor(file: File) : this(NeuralNetwork.load(file), file)
+    constructor(hiddenLayerConfigs: Iterable<Pair<Int, IActivationFunctionPair>>, file: File) :
+        this(NeuralNetwork(15, 1, hiddenLayerConfigs.map { it.first }, hiddenLayerConfigs.map { it.second } + ActivationFunctions.LINEAR), file)
 
     override val actions: Iterable<Action> get() = Action.entries
 
     override fun get(state: State, action: Action): Float = nn.predict(toInputs(state, action)).single()
     override fun set(state: State, action: Action, value: Float) = nn.train(toInputs(state, action), floatArrayOf(value)).discard()
+
+    override fun save() = nn.save(file)
+    override fun load() {
+        nn = NeuralNetwork.load(file)
+    }
 }
