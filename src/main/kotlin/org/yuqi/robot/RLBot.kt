@@ -1,14 +1,15 @@
 package org.yuqi.robot
 
-import org.yuqi.rl.Environment
-import org.yuqi.rl.algorithm.SARSA
-import org.yuqi.rl.algorithm.lambdaGreedy
-import org.yuqi.robot.bridge.*
-import org.yuqi.util.*
+import org.yuqi.robot.bridge.OpponentStatus
+import org.yuqi.robot.bridge.RawState
+import org.yuqi.robot.bridge.State
+import org.yuqi.robot.bridge.Status
+import org.yuqi.util.Point
+import org.yuqi.util.PolarPoint
+import org.yuqi.util.discard
+import org.yuqi.util.normalizeRadian
 import robocode.*
 import java.awt.Color
-import java.io.File
-import java.nio.file.Paths
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sign
@@ -24,15 +25,6 @@ class RLBot : AdvancedRobot() {
         private val trackOffset = (Rules.RADAR_TURN_RATE_RADIANS - Rules.GUN_TURN_RATE_RADIANS - Rules.MAX_TURN_RATE_RADIANS) * 0.75
         private var winRecords = mutableListOf<Int>()
         fun radianTransform(rawRadian: Double) = normalizeRadian(Math.PI / 2 - rawRadian, true)
-
-        val env = Environment<State, Action>()
-        val dataFile: File = Paths.get("robots/rl.bin").toFile()
-        val table = LocalQTable(dataFile).apply {
-            if (file.exists())
-                runCatching { load() }
-        }
-        const val LAMBDA: Float = 0.1F
-        val rl = SARSA(env, table, 0.2, 0.9, lambdaGreedy(LAMBDA)).apply { start() }
     }
 
     private var track: TrackStatus = TrackStatus.Init
@@ -40,6 +32,7 @@ class RLBot : AdvancedRobot() {
     init {
         env.interactEventListeners.add { it.applyTo(this) }
         RawState.resetGlobal()
+        rl.start()
     }
 
     private fun gunTrack(target: Point) {
@@ -110,9 +103,7 @@ class RLBot : AdvancedRobot() {
     override fun onBattleEnded(event: BattleEndedEvent) {
         rl.stop()
         table.save()
-        val fileName = "${rl::class.java.typeName.let { it.substring(it.lastIndexOf(".") + 1) }}-${rl.learningRate}-${rl.decayFactor}-${LAMBDA}"
-        Paths.get("../RobocodeRL/plot/$fileName.txt").toFile()
-            .writeText("$numRounds,${winRecords.joinToString(",")}")
+        Files.record.value.writeText(winRecords.joinToString(","))
     }
 
     override fun onWin(event: WinEvent) = winRecords.add(roundNum).discard()
