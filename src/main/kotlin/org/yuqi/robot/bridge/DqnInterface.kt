@@ -9,32 +9,12 @@ import org.yuqi.util.normalizeRadian
 import java.io.File
 import kotlin.math.min
 
-class DqnInterface(nn: NeuralNetwork, val file: File) : IPersistentQTable<State, Action> {
+open class DqnInterface(nn: NeuralNetwork, val file: File) : IPersistentQTable<State, Action> {
     companion object {
         fun toInputs(state: State, action: Action): FloatArray {
-            val inputs = Array(15) { 0.0 }
-            with(state) {
-                inputs[0] = status.energy
-                inputs[1] = status.velocity
-                val wallDist = distanceToWalls()
-                inputs[2] = min(wallDist.up, wallDist.down)
-                inputs[3] = min(wallDist.left, wallDist.right)
-                inputs[4] = opponent.energy
-                inputs[5] = normalizeRadian(opponent.heading - status.heading)
-                inputs[6] = state.opponent.velocity
-                val opWallDist = distanceToWalls(opponent.position)
-                inputs[7] = min(opWallDist.up, opWallDist.down)
-                inputs[8] = min(opWallDist.left, opWallDist.right)
-                inputs[9] = bearing.length
-                inputs[10] = normalizeRadian(bearing.radian - status.heading)
-                inputs[11] = status.gunHeat
-            }
-            with(action) {
-                inputs[12] = if (component == ActionComponent.Engine) value else 0.0
-                inputs[13] = if (component == ActionComponent.SteeringGear) value else 0.0
-                inputs[14] = if (component == ActionComponent.Trigger) value else 0.0
-            }
-            return inputs.map { it.toFloat() }.toFloatArray()
+            val stateInputs = state.toInputs()
+            val actionInputs = action.toInputs()
+            return stateInputs + actionInputs
         }
     }
 
@@ -43,7 +23,7 @@ class DqnInterface(nn: NeuralNetwork, val file: File) : IPersistentQTable<State,
 
     constructor(file: File) : this(NeuralNetwork.load(file), file)
     constructor(hiddenLayerConfigs: Iterable<Pair<Int, IActivationFunctionPair>>, file: File) :
-        this(NeuralNetwork(15, 1, hiddenLayerConfigs.map { it.first }, hiddenLayerConfigs.map { it.second } + ActivationFunctions.LINEAR), file)
+        this(NeuralNetwork(15, 1, hiddenLayerConfigs.map { it.first }, hiddenLayerConfigs.map { it.second } + ActivationFunctions.IDENTITY), file)
 
     override val actions: Iterable<Action> get() = Action.entries
 
@@ -54,4 +34,31 @@ class DqnInterface(nn: NeuralNetwork, val file: File) : IPersistentQTable<State,
     override fun load() {
         nn = NeuralNetwork.load(file)
     }
+}
+
+fun State.toInputs(): FloatArray {
+    val inputs = DoubleArray(12)
+    inputs[0] = status.energy
+    inputs[1] = status.velocity
+    val wallDist = distanceToWalls()
+    inputs[2] = min(wallDist.up, wallDist.down)
+    inputs[3] = min(wallDist.left, wallDist.right)
+    inputs[4] = opponent.energy
+    inputs[5] = normalizeRadian(opponent.heading - status.heading)
+    inputs[6] = opponent.velocity
+    val opWallDist = distanceToWalls(opponent.position)
+    inputs[7] = min(opWallDist.up, opWallDist.down)
+    inputs[8] = min(opWallDist.left, opWallDist.right)
+    inputs[9] = bearing.length
+    inputs[10] = normalizeRadian(bearing.radian - status.heading)
+    inputs[11] = status.gunHeat
+    return inputs.map { it.toFloat() }.toFloatArray()
+}
+
+fun Action.toInputs(): FloatArray {
+    val inputs = DoubleArray(3)
+    inputs[0] = if (component == ActionComponent.Engine) value else 0.0
+    inputs[1] = if (component == ActionComponent.SteeringGear) value else 0.0
+    inputs[2] = if (component == ActionComponent.Trigger) value else 0.0
+    return inputs.map { it.toFloat() }.toFloatArray()
 }
