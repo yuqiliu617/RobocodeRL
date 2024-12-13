@@ -2,6 +2,7 @@ package org.yuqi.util
 
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 
@@ -31,6 +32,20 @@ fun ByteArray.decompress(): ByteArray =
     }
 
 fun List<Int>.product(): Int = fold(1) { r, v -> r * v }
+
+fun ByteBuffer.putArray(array: FloatArray): ByteBuffer {
+    val floatBuffer = asFloatBuffer()
+    floatBuffer.put(array)
+    this.position(this.position() + floatBuffer.position() * Float.SIZE_BYTES)
+    return this
+}
+
+fun ByteBuffer.getArray(array: FloatArray): ByteBuffer {
+    val floatBuffer = asFloatBuffer()
+    floatBuffer.get(array)
+    this.position(this.position() + floatBuffer.position() * Float.SIZE_BYTES)
+    return this
+}
 
 fun encodeIndex(values: List<Int>, maxValues: List<Int>): Int {
     assert(values.size == maxValues.size)

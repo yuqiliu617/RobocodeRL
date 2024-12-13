@@ -8,6 +8,8 @@ import org.yuqi.nn.math.IActivationFunctionPair
 import org.yuqi.nn.math.IErrorFunctionPair
 import org.yuqi.util.compress
 import org.yuqi.util.decompress
+import org.yuqi.util.getArray
+import org.yuqi.util.putArray
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -40,8 +42,8 @@ class NeuralNetwork(
             }
             for (layer in nn.layers) {
                 for (weights in layer.weights)
-                    buffer.asFloatBuffer().get(weights)
-                buffer.asFloatBuffer().get(layer.biases)
+                    buffer.getArray(weights)
+                buffer.getArray(layer.biases)
             }
             return nn
         }
@@ -54,7 +56,7 @@ class NeuralNetwork(
 
     init {
         val hls = hiddenLayerSizes.toList()
-        val af = activationFunctions?.toList() ?: List(hls.size + 1) { ActivationFunctions.LINEAR }
+        val af = activationFunctions?.toList() ?: List(hls.size + 1) { ActivationFunctions.Identity }
         assert(af.size == hls.size + 1) { "Incompatible sizes" }
         layers = hls.plus(outputSize).mapIndexed { idx, size -> Layer(if (idx == 0) inputSize else hls[idx - 1], size, af[idx]) }
     }
@@ -92,8 +94,8 @@ class NeuralNetwork(
         }
         for (layer in layers) {
             for (weights in layer.weights)
-                buffer.asFloatBuffer().put(weights)
-            buffer.asFloatBuffer().put(layer.biases)
+                buffer.putArray(weights)
+            buffer.putArray(layer.biases)
         }
         file.writeBytes(buffer.array().let { if (compressed) it.compress() else it })
     }
