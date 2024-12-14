@@ -37,9 +37,11 @@ open class RawState(
                     opponent.energy <= 0.0 -> 200
                     else                   -> 100
                 }
+
                 val avgTurns = ev.totalTurns.toDouble() / (status.roundNum + 1)
-                val timeBonus = exp((avgTurns - ev.turns) / 100.0)
-                return (timeBonus * ((robot.energy + 20) / (opponent.energy + 20)) * base).toFloat()
+                val timeBonus = avgTurns + 50 / (ev.turns + 50)
+                val energyRatio = (robot.energy + 20) / (opponent.energy + 20).let { v -> if (v >= 1) v else 1 / v }
+                return (timeBonus * energyRatio * base).toFloat()
             }
             val damageFactor = 4.0
             var hitRobot = false
