@@ -4,31 +4,34 @@ import org.yuqi.nn.NeuralNetwork
 import org.yuqi.nn.math.ActivationFunctions
 import org.yuqi.nn.math.IActivationFunctionPair
 import org.yuqi.util.IPersistentQTable
-import org.yuqi.util.discard
 import org.yuqi.util.normalizeRadian
 import java.io.File
 import kotlin.math.min
 
 open class DqnInterface(nn: NeuralNetwork, val file: File) : IPersistentQTable<State, Action> {
-    companion object {
-        fun toInputs(state: State, action: Action): FloatArray {
-            val stateInputs = state.toInputs()
-            val actionInputs = action.toInputs()
-            return stateInputs + actionInputs
-        }
-    }
-
     var nn: NeuralNetwork = nn
         private set
+    var training = true
 
     constructor(file: File) : this(NeuralNetwork.load(file), file)
     constructor(hiddenLayerConfigs: Iterable<Pair<Int, IActivationFunctionPair>>, file: File) :
-        this(NeuralNetwork(15, 1, hiddenLayerConfigs.map { it.first }, hiddenLayerConfigs.map { it.second } + ActivationFunctions.IDENTITY), file)
+        this(NeuralNetwork(12, Action.maxIndex, hiddenLayerConfigs.map { it.first }, hiddenLayerConfigs.map { it.second } + ActivationFunctions.Identity), file)
 
     override val actions: Iterable<Action> get() = Action.entries
 
-    override fun get(state: State, action: Action): Float = nn.predict(toInputs(state, action)).single()
-    override fun set(state: State, action: Action, value: Float) = nn.train(toInputs(state, action), floatArrayOf(value)).discard()
+    override fun get(state: State, action: Action): Float = nn.predict(state.toInputs())[action.index]
+    override fun set(state: State, action: Action, value: Float) {
+        if (!training)
+            return
+        val expected = nn.predict(state.toInputs())
+        expected[action.index] = value
+        nn.train(state.toInputs(), expected)
+    }
+
+    override fun getRow(state: State): List<Pair<Action, Float>> {
+        val outputs = nn.predict(state.toInputs())
+        return actions.zip(outputs.asIterable()).toList()
+    }
 
     override fun save() = nn.save(file)
     override fun load() {
@@ -52,13 +55,5 @@ fun State.toInputs(): FloatArray {
     inputs[9] = bearing.length
     inputs[10] = normalizeRadian(bearing.radian - status.heading)
     inputs[11] = status.gunHeat
-    return inputs.map { it.toFloat() }.toFloatArray()
-}
-
-fun Action.toInputs(): FloatArray {
-    val inputs = DoubleArray(3)
-    inputs[0] = if (component == ActionComponent.Engine) value else 0.0
-    inputs[1] = if (component == ActionComponent.SteeringGear) value else 0.0
-    inputs[2] = if (component == ActionComponent.Trigger) value else 0.0
     return inputs.map { it.toFloat() }.toFloatArray()
 }
