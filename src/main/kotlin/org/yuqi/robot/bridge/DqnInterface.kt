@@ -8,14 +8,17 @@ import org.yuqi.util.normalizeRadian
 import java.io.File
 import kotlin.math.min
 
-open class DqnInterface(nn: NeuralNetwork, val file: File) : IPersistentQTable<State, Action> {
+open class DqnInterface(nn: NeuralNetwork, val file: File, val batchUpdate: Int = 1) : IPersistentQTable<State, Action> {
+    private var trainingDataIdx = 0
+    private val trainingData = Array(batchUpdate) { FloatArray(12) to FloatArray(Action.maxIndex) }
+
     var nn: NeuralNetwork = nn
         private set
     var training = true
 
-    constructor(file: File) : this(NeuralNetwork.load(file), file)
-    constructor(hiddenLayerConfigs: Iterable<Pair<Int, IActivationFunctionPair>>, file: File) :
-        this(NeuralNetwork(12, Action.maxIndex, hiddenLayerConfigs.map { it.first }, hiddenLayerConfigs.map { it.second } + ActivationFunctions.Identity), file)
+    constructor(file: File, batchUpdate: Int = 1) : this(NeuralNetwork.load(file), file, batchUpdate)
+    constructor(hiddenLayerConfigs: Iterable<Pair<Int, IActivationFunctionPair>>, file: File, batchUpdate: Int = 1) :
+        this(NeuralNetwork(12, Action.maxIndex, hiddenLayerConfigs.map { it.first }, hiddenLayerConfigs.map { it.second } + ActivationFunctions.Identity), file, batchUpdate)
 
     override val actions: Iterable<Action> get() = Action.entries
 
@@ -25,7 +28,17 @@ open class DqnInterface(nn: NeuralNetwork, val file: File) : IPersistentQTable<S
             return
         val expected = nn.predict(state.toInputs())
         expected[action.index] = value
-        nn.train(state.toInputs(), expected)
+        if (batchUpdate <= 1)
+            nn.train(state.toInputs(), expected)
+        else {
+            val pair = trainingData[trainingDataIdx++]
+            state.toInputs().copyInto(pair.first)
+            expected.copyInto(pair.second)
+            if (trainingDataIdx == batchUpdate) {
+                nn.train(trainingData.asIterable(), 1)
+                trainingDataIdx = 0
+            }
+        }
     }
 
     override fun getRow(state: State): List<Pair<Action, Float>> {

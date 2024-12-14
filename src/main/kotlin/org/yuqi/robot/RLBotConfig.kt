@@ -24,6 +24,7 @@ data class RLBotConfig(
     var nnMomentum: Float,
     var nnHiddenLayerNeuronCount: Int,
     var nnHiddenLayerActivationFunction: String,
+    var dqnBatchUpdate: Int = 1,
     var qTableFileName: String? = null,
     var dqnFileName: String? = null,
     var recordFileName: String? = null
@@ -65,7 +66,7 @@ private val dqn = lazy {
         DqnInterface(config.dqnFile!!)
     else {
         val activateFunc = ActivationFunctions.valueOf(config.nnHiddenLayerActivationFunction)
-        DqnInterface(listOf(config.nnHiddenLayerNeuronCount to activateFunc), config.dqnFile!!).apply {
+        DqnInterface(listOf(config.nnHiddenLayerNeuronCount to activateFunc), config.dqnFile!!, config.dqnBatchUpdate).apply {
             nn.learningRate = config.nnLearningRate
             nn.momentum = config.nnMomentum
             training = config.nnTraining
