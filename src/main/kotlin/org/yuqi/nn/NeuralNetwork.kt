@@ -50,6 +50,8 @@ class NeuralNetwork(
     }
 
     private val layers: List<Layer>
+    private var lastInputs: FloatArray? = null
+    private var lastOutputs: FloatArray? = null
     var errorFunction: IErrorFunctionPair = ErrorFunctions.MSE
     var learningRate: Float = 0.1F
     var momentum: Float = 0F
@@ -100,9 +102,19 @@ class NeuralNetwork(
         file.writeBytes(buffer.array().let { if (compressed) it.compress() else it })
     }
 
-    fun predict(inputs: FloatArray) = layers.fold(inputs) { acc, layer -> layer.feedForward(acc) }
+    fun predict(inputs: FloatArray): FloatArray {
+        if (lastInputs?.withIndex()?.all { (i, v) -> v == inputs[i] } == true)
+            return lastOutputs!!
+        lastInputs = inputs.copyOf()
+        val outputs = layers.fold(inputs) { acc, layer -> layer.feedForward(acc) }
+        lastOutputs = outputs.copyOf()
+        return outputs
+    }
 
     private fun backPropagate(inputs: FloatArray, expected: FloatArray) {
+        lastInputs = null
+        lastOutputs = null
+
         val outputs = layers.last().outputs.asIterable()
         val dActivate = layers.last().activate.dF
         var deltas = errorFunction.dF(outputs, expected.asIterable()).zip(outputs) { e, o -> e * dActivate(o) }
