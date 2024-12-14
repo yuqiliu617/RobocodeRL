@@ -6,7 +6,6 @@ import org.yuqi.robot.bridge.State
 import org.yuqi.robot.bridge.Status
 import org.yuqi.util.Point
 import org.yuqi.util.PolarPoint
-import org.yuqi.util.discard
 import org.yuqi.util.normalizeRadian
 import robocode.*
 import java.awt.Color
@@ -103,8 +102,14 @@ class RLBot : AdvancedRobot() {
     override fun onBattleEnded(event: BattleEndedEvent) {
         rl.stop()
         table.save()
-        Files.record.value.writeText(winRecords.joinToString(","))
+        config.recordFile?.let { file ->
+            val roundResults = ByteArray(numRounds)
+            winRecords.forEach { roundResults[it] = 1 }
+            file.writeBytes(roundResults)
+        }
     }
 
-    override fun onWin(event: WinEvent) = winRecords.add(roundNum).discard()
+    override fun onWin(event: WinEvent) {
+        winRecords.add(roundNum)
+    }
 }

@@ -8,6 +8,7 @@ val robocodeBattleFile = "$robocodeBattlesDir$battleFile"
 
 plugins {
     kotlin("jvm") version "2.0.21"
+    kotlin("plugin.serialization") version "2.0.21"
 }
 
 group = "org.yuqi"
@@ -19,6 +20,7 @@ repositories {
 
 dependencies {
     implementation(fileTree("$robocodeHome/libs"))
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.11.0")
     testImplementation("org.jetbrains.kotlinx:kandy-lets-plot:0.7.0")
